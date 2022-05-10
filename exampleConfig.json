@@ -1,0 +1,33 @@
+{
+	"webHost": "http://localhost:3000",
+	"serverList": [
+		{
+			"name": "Cow Server 1.8.9",
+			"ip": "localhost",
+			"port": 25565,
+			"protocol": 47,
+			"dynmap": 8123,
+			"consolePassword": "1234",
+			"inactivityTimeout": 300,
+			"rcon": {
+				"port": 25575,
+				"password": "1234"
+			},
+			"path": "C:/Users/imado/Documents/1.8.9 Server/"
+		},
+		{
+			"name": "Chicken Server 1.16.5",
+			"ip": "localhost",
+			"port": 25566,
+			"protocol": 754,
+			"consolePassword": "1234",
+			"inactivityTimeout": 300,
+			"rcon": {
+				"port": 25576,
+				"password": "123455"
+			},
+			"path": "C:/Users/imado/Documents/1.16.5 Modded Server/"
+		}
+	]
+}
+

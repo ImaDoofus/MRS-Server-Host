@@ -2,19 +2,27 @@ const { io } = require('socket.io-client')
 const { spawn } = require('child_process')
 const mcping = require('mcping-js')
 const { Rcon } = require('rcon-client')
-const serverList = require('./serverList.json')
+const { serverList, webHost } = require('./config.json')
 console.log(serverList)
-const raspberryPI_IP = 'http://localhost:3000'
 
-const socket = io(raspberryPI_IP);
+
+const socket = io(webHost);
+
+var serverLastHadPlayers = {}
 
 socket.on('connect', () => {
 	console.log('connected to raspberry pi')
 	let serverData = JSON.parse(JSON.stringify(serverList)) // clone serverList
+	let consolePasswords = []
 	serverData.forEach(server => {
 		server.rcon = null
+		if (server.consolePassword) {
+			consolePasswords.push( { server: server.name, password: server.consolePassword } )
+			server.consolePassword = null
+		}
 	})
 	socket.emit('serverList', serverData)
+	socket.emit('consolePasswords', consolePasswords)
 })
 
 socket.on('startServer', (name) => {
@@ -47,11 +55,11 @@ function runServer(name) {
 				if (data.toString().includes('For help, type "help"')) { // on server start
 					startRcon(server)
 					pingOnlineServers()
+					serverLastHadPlayers[server.name] = Date.now()
 				}
 				if (data.toString().substring(10, 32) === 'INFO]: Stopping server') { // on server stop
 					socket.emit('serverStopped', server.name)
 					try {
-
 						server.rconConnection.end()
 						server.rconConnection = null
 					} catch (e) {
@@ -62,7 +70,6 @@ function runServer(name) {
 				if (data.toString() === 'Press any key to continue . . . ') { // on server stop
 					socket.emit('serverStopped', server.name)
 					try {
-
 						server.rconConnection.end()
 						server.rconConnection = null
 					} catch (e) {
@@ -106,6 +113,9 @@ function pingOnlineServers() {
 				}
 				else {
 					socket.emit('serverStatus', { server: server.name, status: res })
+					if (res.players.online !== 0) {
+						serverLastHadPlayers[server.name] = Date.now()
+					}
 				}
 			})
 		}
@@ -115,11 +125,21 @@ function pingOnlineServers() {
 setInterval(() => {
 	pingOnlineServers()
 
-	serverList.forEach(server => {
+	serverList.forEach(async server => {
 		if (server.running) {
 			if (!server.rconConnection) {
 				console.log('Attempting to start RCON ' + server.name)
 				startRcon(server)
+			}
+		}
+		if (Date.now() - serverLastHadPlayers[server.name] > server.inactivityTimeout * 1000) {
+			if (server.rconConnection) {
+				console.log('Inactivity timeout reached for ' + server.name)
+				try {
+					console.log(await server.rconConnection.send('stop'))
+				} catch (err) {
+					console.log(err)
+				}
 			}
 		}
 	})
